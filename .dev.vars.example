@@ -1,3 +1,5 @@
+NB_ACCESS_TOKEN="replace-with-a-random-secret-at-least-32-characters-long"
+
 # Optional — only needed for the "nano-banana" (Google Gemini) backend.
 # The default "workers-ai" backend is free and needs NO key.
 #
