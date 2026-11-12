@@ -15,6 +15,8 @@
 interface Env {
   /** Workers AI binding (configured in wrangler.toml). */
   AI: { run: (model: string, inputs: unknown, options?: unknown) => Promise<unknown> };
+  /** Required shared bearer token protecting the remote MCP endpoint. */
+  NB_ACCESS_TOKEN?: string;
   /** Optional — only needed for the "nano-banana" (Gemini) backend. */
   GEMINI_API_KEY?: string;
   /** Optional default backend: "workers-ai" | "nano-banana". */
@@ -188,6 +190,21 @@ async function handleMessage(env: Env, msg: Json): Promise<Json | null> {
   }
 }
 
+// ------------------------ request authentication --------------------
+
+async function tokenMatches(provided: string, expected: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(provided)),
+    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
+  ]);
+  const left = new Uint8Array(a);
+  const right = new Uint8Array(b);
+  let difference = 0;
+  for (let i = 0; i < left.length; i++) difference |= left[i] ^ right[i];
+  return difference === 0;
+}
+
 // ----------------------------- HTTP ---------------------------------
 
 const CORS: Record<string, string> = {
@@ -231,6 +248,18 @@ export default {
     }
 
     if (url.pathname === "/mcp") {
+      const expectedToken = env.NB_ACCESS_TOKEN;
+      if (!expectedToken || expectedToken.length < 32) {
+        return new Response("Server authentication is not configured.", { status: 503, headers: CORS });
+      }
+      const authorization = request.headers.get("Authorization") || "";
+      const providedToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+      if (!(await tokenMatches(providedToken, expectedToken))) {
+        return new Response("Unauthorized", {
+          status: 401,
+          headers: { ...CORS, "WWW-Authenticate": 'Bearer realm="nb-mcp"' },
+        });
+      }
       if (request.method === "DELETE") {
         return new Response(null, { status: 204, headers: CORS }); // stateless: nothing to clean up
       }
