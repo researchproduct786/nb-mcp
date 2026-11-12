@@ -42,12 +42,12 @@ works immediately on the free tier (no key needed).
 
 ---
 
-## Add it to Claude
+## Secure the endpoint (required)\n\nBefore connecting Claude, create a long random secret (at least 32 characters) and save it in Cloudflare as the Worker secret `NB_ACCESS_TOKEN`. You can use `npx wrangler secret put NB_ACCESS_TOKEN` or add it in the Worker dashboard under Settings → Variables and Secrets. Do not put this value in `wrangler.toml`, `.dev.vars.example`, or Git.\n\nClaude must send the same value as a fixed request header: `Authorization: Bearer <your secret>`. The Worker rejects missing or incorrect credentials.\n\n---\n\n## Add it to Claude
 
 1. In Claude, go to **Settings → Connectors** (a.k.a. **Customize → Connectors**).
 2. Click **+ Add custom connector**.
 3. **Name:** `nano banana` (anything). **URL:** your `…/mcp` URL.
-4. Save (no OAuth needed — leave Advanced settings empty).
+4. Under Authentication, choose **No sign in**. Under Request headers, add `Authorization` with value `Bearer <your NB_ACCESS_TOKEN>`. Save.
 5. In a chat, open the **+** menu → **Connectors** and enable it, then ask Claude to make an image.
 
 Try:
@@ -88,6 +88,7 @@ Then either call the tool with `backend: "nano-banana"`, or make it the default 
 | binding / var | where | purpose |
 |---------------|-------|---------|
 | `AI` | `wrangler.toml` `[ai]` | Workers AI binding (free image backend). Required for `workers-ai`. |
+| `NB_ACCESS_TOKEN` | Cloudflare Worker secret | Required bearer token for every `/mcp` request (minimum 32 characters). |
 | `GEMINI_API_KEY` | `wrangler secret put` / `.dev.vars` | Only for the `nano-banana` backend. |
 | `NB_BACKEND` | `[vars]` | Default backend: `workers-ai` (default) or `nano-banana`. |
 | `NB_WORKERS_MODEL` | `[vars]` | Override Workers AI model (default `@cf/black-forest-labs/flux-1-schnell`). |
